@@ -5,26 +5,6 @@ import pandas as pd
 import datetime as dt
 from webdriver_manager.chrome import ChromeDriverManager
 
-def scrape_all():
-    # Initiate headless driver for deployment
-    executable_path = {'executable_path': ChromeDriverManager().install()}
-    browser = Browser('chrome', **executable_path, headless=True)
-
-    news_title, news_paragraph = mars_news(browser)
-
-    # Run all scraping functions and store results in a dictionary
-    data = {
-        "news_title": news_title,
-        "news_paragraph": news_paragraph,
-        "featured_image": featured_image(browser),
-        "facts": mars_facts(),
-        "last_modified": dt.datetime.now()
-    }
-
-    # Stop webdriver and return data
-    browser.quit()
-    return data
-
 # Define Mars News Function
 def mars_news(browser):
 
@@ -96,6 +76,59 @@ def mars_facts():
 
     # Convert dataframe into HTML format, add bootstrap
     return df.to_html(classes="table table-striped")
+
+# Define Mars Hemispheres
+def hemispheres(browser):
+    # Use browser to visit the URL 
+    url = "https://astrogeology.usgs.gov/search/results?q=hemisphere+enhanced&k1=target&v1=Mars"
+    browser.visit(url)
+    
+    #Create a list to hold the images and titles.
+    hemisphere_image_urls = []
+
+    # Find CSS element for full resolution images and for loop
+    links = browser.find_by_css("a.product-item h3")
+    for item in range(len(links)):
+        hemisphere = {}
+        
+        # Find CSS element and click the full image button link
+        browser.find_by_css("a.product-item h3")[item].click()
+        
+        # Find sample image and extract URL using href
+        sample_element = browser.find_link_by_text("Sample").first
+        hemisphere["img_url"] = sample_element["href"]
+        
+        # Get hemisphere title
+        hemisphere["title"] = browser.find_by_css("h2.title").text
+        
+        # Append hemisphere titles to list
+        hemisphere_image_urls.append(hemisphere)
+        
+        # Navigate back to the beginning to get the next hemisphere image
+        browser.back()
+    return hemisphere_image_urls
+
+# Main scraping tool for all functions
+def scrape_all():
+    # Initiate headless driver for deployment
+    executable_path = {'executable_path': ChromeDriverManager().install()}
+    browser = Browser('chrome', **executable_path, headless=True)
+
+    news_title, news_paragraph = mars_news(browser)
+    hemisphere_image_urls = hemispheres(browser)
+    # Run all scraping functions and store results in a dictionary
+    data = {
+        "news_title": news_title,
+        "news_paragraph": news_paragraph,
+        "featured_image": featured_image(browser),
+        "facts": mars_facts(),
+        "last_modified": dt.datetime.now(),
+        "hemispheres": hemisphere_image_urls
+    }
+
+    # Stop webdriver and return data
+    browser.quit()
+    return data
 
 if __name__ == "__main__":
 
